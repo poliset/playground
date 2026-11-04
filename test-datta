@@ -1,0 +1,281 @@
+Create a beginner-friendly C# tutorial on Object Mother, Test Data Builder, and lazy builder design. Explain why they are useful, how they compare, and how they maintain clear test contexts and related object graphs.
+
+Audience: Developers who know basic C# but are new to automated testing.
+
+Use a small order-processing domain:
+- Customer → Orders → OrderLines.
+- Each OrderLine references a Product.
+- Introduce a payment gateway interface only for the Moq section.
+
+Keep the model small. State business rules and relationship assumptions before writing code. Do not assume Entity Framework or a database.
+
+Success criteria:
+- Readers understand the problem before learning the patterns.
+- Readers can implement Object Mother and Test Data Builder without third-party libraries.
+- Readers understand deferred construction and can implement a lazy builder.
+- Readers can construct valid parent–child graphs and explain their construction order.
+- Readers can maintain readable, independent test contexts as models change.
+- Readers can choose an approach based on trade-offs rather than a universal winner.
+- Readers understand the distinct contributions of xUnit v3, AutoFixture, and Moq.
+
+Follow this sequence.
+
+1. Establish the problem and define test context
+
+Explain arrange, act, and assert.
+
+Define test context as the relevant starting state and conditions for the behavior being tested:
+- Input values.
+- Business state and preconditions.
+- Related objects.
+- Dependency behavior, when applicable.
+
+Distinguish this from Entity Framework DbContext, test fixture lifecycle, and an LLM’s context.
+
+Begin with direct object construction. Show how repeated setup, nested construction, and irrelevant values obscure the scenario.
+
+Use consistent scenarios:
+- A valid standard order.
+- An order eligible for a discount.
+- An order violating a business rule.
+- A customer with multiple orders and multiple lines per order.
+
+2. Explain and compare the patterns
+
+Define:
+- Object Mother: named factory methods for meaningful scenarios.
+- Test Data Builder: valid defaults with explicit scenario customization.
+- Lazy builder design: retaining configuration or creation recipes and deferring domain-object creation until Build().
+
+Explain that deferred construction can be a design choice within a Test Data Builder rather than a competing pattern.
+
+Distinguish:
+- A builder that modifies an already-created domain object.
+- A builder that stores values and constructs the object in Build().
+- A builder that stores factories or nested builder recipes.
+- C# Lazy<T>, including its value-caching behavior.
+
+Do not imply that every builder needs Func<T> or Lazy<T>.
+
+Compare readability, customization, reuse, maintenance, discoverability, nested-object support, and complexity.
+
+Answer “Which is better?” with a recommendation for this example and conditions that would change it. Include when direct construction is sufficient.
+
+3. Implement both main patterns without third-party dependencies
+
+Use only C# and the .NET base class library.
+
+Provide complete code for:
+- The domain model and behavior.
+- Object Mother with named scenarios.
+- Test Data Builder with valid defaults, fluent customization, and Build().
+- Equivalent checks using each approach.
+
+Use minimal console-based checks that throw on failure. Explain that these demonstrate the concepts but do not replace a test framework.
+
+Avoid generic builder frameworks and unrelated architecture.
+
+4. Build object hierarchies and parent–child relationships
+
+Distinguish:
+- A containment or ownership hierarchy.
+- An object graph with shared references.
+- Class inheritance, which is not the focus.
+
+Show the relationships with a small text diagram. Explain why shared Product references make this more than a simple tree.
+
+State:
+- Required and optional relationships.
+- Which object manages its children.
+- Whether links are one-way or bidirectional.
+- Whether children reference their parent.
+- Whether Products can be shared.
+- Whether identifiers are required.
+- Which invariants belong in domain constructors or methods.
+
+Demonstrate:
+A. One parent with one child.
+B. One parent with several children.
+C. Multiple parents with independent children.
+D. Customer → Orders → OrderLines → Product.
+E. Multiple lines intentionally sharing one Product instance.
+
+Show Object Mother and composed builders without unnecessary duplicate listings.
+
+For builder APIs:
+- Compare accepting built child objects, child builders, and factories.
+- Choose a small, consistent primary API and explain why.
+- State whether collection methods add or replace items.
+- State whether repeated Build() calls create fresh graphs.
+- Identify any references intentionally shared.
+
+5. Implement and explain lazy construction
+
+Use a focused before-and-after example.
+
+First show an eager builder that creates or retains a domain object too early. Identify the specific problem in the example, without claiming all eager designs are inherently wrong.
+
+Then implement deferred construction:
+- Configuration methods record values or creation recipes.
+- Build() creates the domain objects.
+- Nested objects are created when the parent graph is built.
+- Required links are established through valid domain constructors or methods.
+
+Use Func<T> only where deferring a nested object’s creation materially helps. Start with ordinary stored values for simple properties.
+
+Explain the precise timing:
+- When configuration callbacks execute.
+- When factories execute.
+- When constructors execute.
+- When parent–child links are established.
+- When validation occurs.
+
+Clarify that deferred object allocation does not automatically defer configuration callbacks.
+
+Provide a short execution trace showing configuration followed by Build().
+
+Define and demonstrate the chosen semantics:
+- Does each Build() produce a fresh root and fresh mutable children?
+- Is a child factory invoked once per child, once per graph, or on each access?
+- What happens when the caller supplies an existing object?
+- What happens when the same child builder is reused?
+- Do later changes to a captured builder affect an earlier configured parent builder?
+
+Choose explicit semantics rather than hiding these decisions. Explain any remaining aliasing or mutable-capture risks.
+
+Compare:
+- Storing a value.
+- Storing a factory.
+- Using Lazy<T>.
+
+Explain why delayed creation and cached reuse are different decisions. Do not use Lazy<T> as the default solution for generating independent test objects.
+
+Show checks for:
+- No domain-object creation before Build().
+- Two builds producing independent mutable graphs.
+- Changes to one graph not affecting the other.
+- Intentional sharing of a Product within one graph.
+- Correct bidirectional parent–child links, if the chosen model uses them.
+
+Discuss pitfalls:
+- Factories returning the same mutable instance.
+- Capturing mutable external variables.
+- Reusing a mutable nested builder unexpectedly.
+- Exceptions appearing only when Build() runs.
+- Repeated factory invocation.
+- Recursive parent–child construction.
+- Unnecessary laziness for simple data.
+
+Do not promise thread safety or immutability unless implemented and demonstrated.
+
+6. Explain creation order and relationship wiring
+
+Do not claim a universal creation order.
+
+For the model:
+- Identify dependencies imposed by constructors and domain methods.
+- Separate configuration order from object allocation and relationship-wiring order.
+- Show the exact order used.
+- Explain why it satisfies the model’s rules.
+
+Compare where relevant:
+- Creating referenced or leaf objects first.
+- Creating a parent first and adding children through a domain method.
+- Using a parent or aggregate factory to coordinate construction.
+
+For bidirectional relationships:
+- Keep both sides consistent.
+- Prefer existing relationship-management methods.
+- Avoid infinite recursion between builders.
+- Do not bypass encapsulation with reflection or public setters solely for test setup.
+
+Explain when object references suffice and when identifiers must already exist.
+
+Keep in-memory creation separate from persistence and database insertion order. Any persistence discussion must be brief and explicitly dependent on the mapping and framework.
+
+7. Explain maintaining test contexts
+
+Demonstrate:
+A. Adding a required constructor argument.
+B. Changing a business rule or default.
+C. Adding a required child relationship.
+
+For each:
+- Show relevant before-and-after code.
+- Identify helpers and tests that change.
+- Explain which tests should remain unchanged.
+- Distinguish mechanical setup changes from meaningful scenario changes.
+- Do not equate fewer edited files with better tests.
+
+Explain:
+- Named scenarios communicate business intent.
+- Defaults remove irrelevant setup but must not hide the condition under test.
+- Explicit overrides identify what makes a scenario different.
+- Reusing a recipe differs from sharing an object instance.
+- Lazy construction does not automatically solve shared-state problems.
+
+Recommend:
+- Building only the graph needed by the test.
+- Using valid minimal defaults.
+- Keeping important values and relationships visible.
+- Sharing references deliberately.
+- Keeping values deterministic unless variation is intentional.
+- Limiting graph depth.
+- Distinguishing invalid business input from an internally inconsistent graph.
+- Not silently repairing invalid conditions needed for negative tests.
+
+Show one overabstracted setup and a clearer alternative.
+
+8. Introduce third-party libraries incrementally
+
+Keep the same domain, rules, and scenarios.
+
+First: xUnit v3
+- Convert console checks into tests.
+- Retain handcrafted helpers.
+- Explain test execution and fixture lifecycle separately from data construction.
+- Demonstrate the graph-independence and lazy-construction checks as tests.
+
+Next: AutoFixture
+- Show basic and related-object generation.
+- Explain recursive and bidirectional relationships.
+- Use an explicit, limited graph-generation strategy.
+- Explain omissions introduced by recursion handling and whether domain rules still hold.
+- Do not equate suppressing recursion errors with creating a valid graph.
+- Keep scenario values, relationship intent, and collection sizes explicit.
+- Explain whether handcrafted builders or Object Mothers still add value.
+- Show where fixture-based creation can be deferred through a factory, if useful.
+- Do not imply AutoFixture automatically provides the lazy builder’s chosen semantics.
+
+Finally: Moq
+- Introduce one interface dependency.
+- Explain how configured behavior forms part of the context.
+- Distinguish mocked behavior from data construction and deferred construction.
+- Do not mock domain objects merely to avoid constructing their relationships.
+
+Provide a complete final example using xUnit v3, AutoFixture, and Moq together. Avoid unnecessary integration packages.
+
+Include setup commands and compatible package versions. If browsing is available, verify version-sensitive APIs and setup against official documentation and cite it. Otherwise, disclose assumptions and unverified details.
+
+9. Finish with practical guidance
+
+Include:
+- A decision table for direct construction, Object Mother, ordinary builders, deferred builders, and combinations.
+- A creation-order checklist.
+- A checklist for graph validity, context clarity, freshness, and factory execution.
+- Common beginner mistakes.
+- Two exercises:
+  1. Add a customized nested child.
+  2. Add a required relationship while preserving independent graphs.
+- A final recommendation for a team starting automated testing.
+
+Writing and reliability rules:
+- Use plain language, concrete verbs, and consistent terms.
+- Explain unfamiliar terminology.
+- Keep names, models, rules, and scenarios consistent.
+- Separate domain rules, helper design choices, library behavior, and persistence concerns.
+- Separate supplied facts from assumptions.
+- Never fabricate sources, citations, data, APIs, package versions, files, test results, tool output, research, or completed actions.
+- Do not claim compilation or passing tests without actual execution.
+- Ask focused questions when critical information is missing instead of guessing. State minor assumptions and proceed.
+- Before finishing, check completeness, relationship consistency, construction timing, factory invocation, fresh-instance behavior, recursion handling, and coverage of the success criteria.
